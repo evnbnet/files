@@ -1,0 +1,146 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { supabase } from '../../lib/supabase';
+
+const { id } = Astro.params;
+
+if (!id) {
+    return Astro.redirect('/404');
+}
+
+// Fetch video data
+const { data: video, error } = await supabase
+    .from('videos')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+if (error || !video) {
+    return Astro.redirect('/404');
+}
+
+const pageUrl = Astro.url.href;
+const videoUrl = video.file_url;
+---
+
+<Layout title={video.name}>
+    <Fragment slot="head">
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="video.other" />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:title" content={video.name} />
+        <meta property="og:description" content={`Ver ${video.name}`} />
+        <meta property="og:video" content={videoUrl} />
+        <meta property="og:video:secure_url" content={videoUrl} />
+        <meta property="og:video:type" content="video/mp4" />
+        <meta property="og:video:width" content="1280" />
+        <meta property="og:video:height" content="720" />
+        
+        <!-- Twitter -->
+        <meta name="twitter:card" content="player" />
+        <meta name="twitter:title" content={video.name} />
+        <meta name="twitter:description" content={`Ver ${video.name}`} />
+        <meta name="twitter:player" content={pageUrl} />
+        <meta name="twitter:player:width" content="1280" />
+        <meta name="twitter:player:height" content="720" />
+        <meta name="twitter:player:stream" content={videoUrl} />
+        <meta name="twitter:player:stream:content_type" content="video/mp4" />
+
+        <!-- Discord optimization -->
+        <meta property="og:site_name" content="Video Share" />
+        <meta name="theme-color" content="#2563eb" />
+    </Fragment>
+
+    <main class="min-h-screen flex items-center justify-center px-4 py-12">
+        <div class="w-full max-w-5xl">
+            <div class="bg-[#1a2332] border border-gray-700/50 rounded-2xl shadow-2xl overflow-hidden">
+                <!-- Video Header -->
+                <div class="px-6 py-4 border-b border-gray-700/50">
+                    <h1 class="text-2xl font-bold text-white">{video.name}</h1>
+                    <p class="text-gray-400 text-sm mt-1">
+                        {new Date(video.created_at).toLocaleDateString('es-ES', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })}
+                    </p>
+                </div>
+
+                <!-- Video Player -->
+                <div class="bg-black">
+                    <video
+                        id="videoPlayer"
+                        class="w-full"
+                        controls
+                        preload="metadata"
+                        controlsList="nodownload"
+                    >
+                        <source src={videoUrl} type="video/mp4" />
+                        Tu navegador no soporta el elemento de video.
+                    </video>
+                </div>
+
+                <!-- Video Actions -->
+                <div class="px-6 py-4 flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <button
+                            id="copyBtn"
+                            class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-all"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                            <span>Copiar enlace</span>
+                        </button>
+
+                        <a
+                            href="/"
+                            class="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-all"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                            </svg>
+                            <span>Inicio</span>
+                        </a>
+                    </div>
+
+                    <div class="text-gray-400 text-sm">
+                        <span id="views">Cargando...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Info -->
+            <div class="mt-6 text-center text-gray-500 text-sm">
+                <p>Este video se eliminará automáticamente después de 7 días</p>
+            </div>
+        </div>
+    </main>
+
+    <script define:vars={{ pageUrl }}>
+        // Copy link functionality
+        const copyBtn = document.getElementById('copyBtn');
+        copyBtn?.addEventListener('click', async () => {
+            await navigator.clipboard.writeText(pageUrl);
+            const span = copyBtn.querySelector('span');
+            const originalText = span?.textContent;
+            if (span) {
+                span.textContent = '¡Copiado!';
+                setTimeout(() => {
+                    span.textContent = originalText;
+                }, 2000);
+            }
+        });
+
+        // Auto-play video (if allowed by browser)
+        const video = document.getElementById('videoPlayer') as HTMLVideoElement;
+        if (video) {
+            video.play().catch(() => {
+                // Auto-play was prevented
+                console.log('Auto-play prevented');
+            });
+        }
+    </script>
+</Layout>
